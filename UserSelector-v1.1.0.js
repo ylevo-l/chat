@@ -24,6 +24,9 @@ export class UserSelector {
     this.mouseDisabledUntil = 0;
     this.virtualOffset = 0;
     this.scrollOffsetY = 0;
+    this.typedSequence = "";
+    this.typedTimeoutId = null;
+    this.typedTimeoutDuration = 1000;
     new MutationObserver(() => {
       if (this.shiftActive) {
         this._refreshCandidates();
@@ -130,6 +133,13 @@ body.selection-mode .${this.highlightClass} * {
       if (this.candidateElements.length) {
         this._ensureHighlight();
       }
+    } else if (this.shiftActive && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      this.typedSequence += e.key.toLowerCase();
+      clearTimeout(this.typedTimeoutId);
+      this._trySelectByTypedSequence();
+      this.typedTimeoutId = setTimeout(() => {
+        this.typedSequence = "";
+      }, this.typedTimeoutDuration);
     }
   }
   _handleKeyup(e) {
@@ -141,6 +151,9 @@ body.selection-mode .${this.highlightClass} * {
       this.virtualOffset = 0;
       this.scrollOffsetY = 0;
       this.mouseDisabledUntil = 0;
+      this.typedSequence = "";
+      clearTimeout(this.typedTimeoutId);
+      this.typedTimeoutId = null;
     }
   }
   _handleMousemove(e) {
@@ -389,6 +402,17 @@ body.selection-mode .${this.highlightClass} * {
     }
     if (r !== n) {
       this._highlightBlock(this.candidateElements[r]);
+    }
+  }
+  _trySelectByTypedSequence() {
+    if (!this.typedSequence) return;
+    const lowerSeq = this.typedSequence.toLowerCase();
+    const match = this.candidateElements.find(el => {
+      const userName = this._uniqueName(el);
+      return userName && userName.toLowerCase().startsWith(lowerSeq);
+    });
+    if (match) {
+      this._highlightBlock(match);
     }
   }
 }
