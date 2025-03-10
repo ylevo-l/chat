@@ -26,7 +26,7 @@ export class UserSelector {
     this.scrollOffsetY = 0;
     this.typedSequence = "";
     this.typedTimeoutId = null;
-    this.typedTimeoutDuration = 1000;
+    this.typedTimeoutDuration = 250;
     new MutationObserver(() => {
       if (this.shiftActive) {
         this._refreshCandidates();
