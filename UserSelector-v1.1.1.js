@@ -26,7 +26,7 @@ export class UserSelector {
     this.scrollOffsetY = 0;
     this.typedSequence = "";
     this.typedTimeoutId = null;
-    this.typedTimeoutDuration = 250;
+    this.typedTimeoutDuration = 500; // Increased timeout for better typing experience
     new MutationObserver(() => {
       if (this.shiftActive) {
         this._refreshCandidates();
@@ -134,12 +134,18 @@ body.selection-mode .${this.highlightClass} * {
         this._ensureHighlight();
       }
     } else if (this.shiftActive && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-      this.typedSequence += e.key.toLowerCase();
+      // Get the actual character (handles shift+number and special keys correctly)
+      const char = e.key;
+      this.typedSequence += char.toLowerCase();
       clearTimeout(this.typedTimeoutId);
       this._trySelectByTypedSequence();
       this.typedTimeoutId = setTimeout(() => {
         this.typedSequence = "";
       }, this.typedTimeoutDuration);
+    } else if (e.key === "Enter" && this.activeElement) {
+      this._triggerAction(this.activeElement);
+      e.preventDefault();
+      e.stopPropagation();
     }
   }
   _handleKeyup(e) {
@@ -406,13 +412,42 @@ body.selection-mode .${this.highlightClass} * {
   }
   _trySelectByTypedSequence() {
     if (!this.typedSequence) return;
+    
     const lowerSeq = this.typedSequence.toLowerCase();
-    const match = this.candidateElements.find(el => {
+    
+    let matches = this.candidateElements.filter(el => {
       const userName = this._uniqueName(el);
       return userName && userName.toLowerCase().startsWith(lowerSeq);
     });
-    if (match) {
-      this._highlightBlock(match);
+    
+    if ((!matches || matches.length === 0) && lowerSeq.length > 1) {
+      matches = this.candidateElements.filter(el => {
+        const userName = this._uniqueName(el);
+        return userName && userName.toLowerCase().includes(lowerSeq);
+      });
+    }
+    
+    if (matches && matches.length > 0) {
+      matches.sort((a, b) => {
+        const rectA = a.getBoundingClientRect();
+        const rectB = b.getBoundingClientRect();
+        return rectB.top - rectA.top;
+      });
+      
+      const mostRecentMatch = matches[0];
+      this._highlightBlock(mostRecentMatch);
+      
+      const rect = mostRecentMatch.getBoundingClientRect();
+      const isInView = (
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+      );
+      
+      if (!isInView) {
+        mostRecentMatch.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     }
   }
 }
