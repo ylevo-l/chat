@@ -10,7 +10,9 @@ export class UserSelector {
     );
     this.highlightClass = "chat-hover-highlight";
     this.noSelectClass = "no-select";
+    this.altNavModeClass = "alt-navigation-mode";
     this.shiftActive = false;
+    this.altNavigationMode = false;
     this.activeElement = null;
     this.activeBlock = [];
     this.hiddenActions = [];
@@ -18,6 +20,7 @@ export class UserSelector {
     this.lastMousePos = { x: -1, y: -1 };
     this.candidateElements = [];
     this.overlay = this._createOverlay();
+    this.cursorTooltip = this._createCursorTooltip();
     this._injectStyles();
     this._bindEvents();
     this.updaterId = null;
@@ -26,7 +29,11 @@ export class UserSelector {
     this.scrollOffsetY = 0;
     this.typedSequence = "";
     this.typedTimeoutId = null;
-    this.typedTimeoutDuration = 500; // Increased timeout for better typing experience
+    this.typedTimeoutDuration = 500;
+    
+    this.doc.addEventListener('mousemove', (e) => {
+      this.mousePos = { x: e.clientX, y: e.clientY };
+    }, { passive: true });
     new MutationObserver(() => {
       if (this.shiftActive) {
         this._refreshCandidates();
@@ -61,6 +68,21 @@ export class UserSelector {
     this.doc.body.appendChild(e);
     return e;
   }
+  
+  _createCursorTooltip() {
+    const e = this.doc.createElement("div");
+    e.className = "cursor-tooltip";
+    e.style.willChange = "transform";
+    e.style.pointerEvents = "none";
+    e.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:-6px;left:-6px">
+        <path d="M5 5L19 19M5 19L19 5" stroke="white" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <div class="cursor-tooltip-content">Selection</div>
+    `;
+    this.doc.body.appendChild(e);
+    return e;
+  }
   get _styleContent() {
     return `:root {
 --highlight-border-color: #3b82f6;
@@ -83,6 +105,7 @@ export class UserSelector {
   z-index: 1000;
   opacity: 0;
   transition: opacity 0.15s ease-out;
+  will-change: opacity, transform;
 }
 .hover-tooltip-overlay.active {
   opacity: 1;
@@ -95,6 +118,9 @@ export class UserSelector {
 }
 body.selection-mode .${this.highlightClass} * {
   pointer-events: none !important;
+}
+body.${this.altNavModeClass} * {
+  cursor: none !important;
 }
 .hover-tooltip {
   position: absolute;
@@ -110,6 +136,32 @@ body.selection-mode .${this.highlightClass} * {
   pointer-events: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  will-change: transform;
+}
+.cursor-tooltip {
+  position: fixed;
+  pointer-events: none;
+  z-index: 10000;
+  opacity: 0;
+  transition: opacity 0.1s ease-out;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform: translate(10px, 10px);
+}
+.cursor-tooltip.active {
+  opacity: 1;
+}
+.cursor-tooltip-content {
+  background: var(--tooltip-bg-color);
+  color: var(--tooltip-text-color);
+  padding: var(--tooltip-padding);
+  border-radius: var(--tooltip-border-radius);
+  font-size: var(--tooltip-font-size);
+  white-space: nowrap;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  will-change: contents;
 }`;
   }
   _injectStyles() {
@@ -134,24 +186,41 @@ body.selection-mode .${this.highlightClass} * {
         this._ensureHighlight();
       }
     } else if (this.shiftActive && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-      // Get the actual character (handles shift+number and special keys correctly)
-      const char = e.key;
-      this.typedSequence += char.toLowerCase();
-      clearTimeout(this.typedTimeoutId);
-      this._trySelectByTypedSequence();
-      this.typedTimeoutId = setTimeout(() => {
-        this.typedSequence = "";
-      }, this.typedTimeoutDuration);
+      this._enterAltNavigationMode();
+      
+      requestAnimationFrame(() => {
+        const char = e.key;
+        this.typedSequence += char.toLowerCase();
+        
+        clearTimeout(this.typedTimeoutId);
+        
+        this._trySelectByTypedSequence();
+        
+        this.typedTimeoutId = setTimeout(() => {
+          this.typedSequence = "";
+        }, this.typedTimeoutDuration);
+      });
     } else if (e.key === "Enter" && this.activeElement) {
       this._triggerAction(this.activeElement);
       e.preventDefault();
       e.stopPropagation();
+    } else if (this.shiftActive && (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "Home" || e.key === "End" || e.key === "PageUp" || e.key === "PageDown")) {
+      this._enterAltNavigationMode();
+      
+      if (e.key === "ArrowUp") {
+        this.incrementHighlightUp();
+        e.preventDefault();
+      } else if (e.key === "ArrowDown") {
+        this.incrementHighlightDown();
+        e.preventDefault();
+      }
     }
   }
   _handleKeyup(e) {
     if (e.key === "Shift") {
       this.shiftActive = false;
       this.doc.body.classList.remove(this.noSelectClass, "selection-mode");
+      this._exitAltNavigationMode();
       this._resetHighlight();
       this.candidateElements = [];
       this.virtualOffset = 0;
@@ -169,11 +238,23 @@ body.selection-mode .${this.highlightClass} * {
       }
       return;
     }
-    if (Date.now() < this.mouseDisabledUntil) return;
+    
     const n = { x: e.clientX, y: e.clientY + this.virtualOffset + this.scrollOffsetY };
-    if (n.x === this.lastMousePos.x && n.y === this.lastMousePos.y) return;
     this.lastMousePos = n;
-    this.mousePos = n;
+    this.mousePos = { x: e.clientX, y: e.clientY };
+    
+    if (this.altNavigationMode) {
+      requestAnimationFrame(() => {
+        this._updateCursorTooltip(0, 0, true);
+      });
+    }
+    
+    if (Date.now() >= this.mouseDisabledUntil && this.altNavigationMode) {
+      this._exitAltNavigationMode();
+    }
+    
+    if (Date.now() < this.mouseDisabledUntil) return;
+    
     this._refreshCandidates();
     this._ensureHighlight();
   }
@@ -200,26 +281,52 @@ body.selection-mode .${this.highlightClass} * {
     if (this.shiftActive) e.preventDefault();
   }
   _handleWheel(e) {
-    if (this.shiftActive && this.activeElement) {
+    if (this.shiftActive) {
       e.preventDefault();
+      
+      this._enterAltNavigationMode();
+      
+      this.mousePos = { x: e.clientX, y: e.clientY };
+      
+      this._updateCursorTooltip(0, 0, true);
+      
       this._refreshCandidates();
+      
+      if (!this.activeElement && this.candidateElements.length > 0) {
+        this._highlightBlock(this.candidateElements[0]);
+        this._updateCursorTooltip(0, 0, true);
+        return;
+      }
+      
+      if (!this.activeElement) return;
+      
       const n = this.candidateElements.indexOf(this.activeElement);
       if (n < 0) return;
+      
       let r = e.deltaY > 0 ? 1 : -1;
       let i = n + r;
+      
       const s = this._uniqueName(this.candidateElements[n]);
       while (i >= 0 && i < this.candidateElements.length && this._uniqueName(this.candidateElements[i]) === s) {
         i += r;
       }
+      
       if (i < 0 || i >= this.candidateElements.length) return;
+      
+      this._updateCursorTooltip(0, 0, true);
+      
       this._highlightBlock(this.candidateElements[i]);
+      
       const o = this._getBlockRect();
       if (o) {
         const c = o.top + o.height / 2;
         this.virtualOffset = c - e.clientY;
-        this.mousePos = { x: o.left + o.width / 2, y: c };
-        this.lastMousePos = { ...this.mousePos };
+        this.lastMousePos = { x: e.clientX, y: e.clientY + this.virtualOffset + this.scrollOffsetY };
         this.mouseDisabledUntil = Date.now() + 300;
+        
+        requestAnimationFrame(() => {
+          this._updateCursorTooltip(0, 0, true);
+        });
       }
     }
   }
@@ -306,11 +413,15 @@ body.selection-mode .${this.highlightClass} * {
   }
   _highlightBlock(e) {
     if (!e) return;
+    
     if (this.activeElement && this._uniqueName(this.activeElement) === this._uniqueName(e)) return;
+    
     this._resetHighlight();
+    
     const n = this._getBlockElements(e);
     this.activeBlock = n;
     this.activeElement = e;
+    
     n.forEach(r => {
       r.classList.add(this.highlightClass);
       const i = r.querySelector("#chat-message-actions");
@@ -319,12 +430,22 @@ body.selection-mode .${this.highlightClass} * {
         i.style.display = "none";
       }
     });
+    
     const r = e.querySelector("button.font-bold[title]");
     const i = r ? r.getAttribute("title") : "Chat";
     const s = this.overlay.querySelector(".hover-tooltip");
     if (s) s.textContent = `${i} | Log`;
-    this.overlay.classList.add("active");
+    
     this._updateOverlayPosition();
+    
+    requestAnimationFrame(() => {
+      this.overlay.classList.add("active");
+    });
+    
+    if (this.altNavigationMode) {
+      this._updateCursorTooltip(0, 0, true);
+    }
+    
     this._startUpdater();
   }
   _updateOverlayPosition() {
@@ -363,11 +484,61 @@ body.selection-mode .${this.highlightClass} * {
     this.activeElement = null;
     this._stopUpdater();
   }
+  
+  _enterAltNavigationMode() {
+    if (!this.altNavigationMode) {
+      this.altNavigationMode = true;
+      this.doc.body.classList.add(this.altNavModeClass);
+      
+      this.cursorTooltip.style.transition = "none";
+      this.cursorTooltip.classList.add("active");
+      this._updateCursorTooltip(0, 0, true);
+      
+      void this.cursorTooltip.offsetWidth;
+      this.cursorTooltip.style.transition = "";
+    }
+  }
+  
+  _exitAltNavigationMode() {
+    if (this.altNavigationMode) {
+      this.altNavigationMode = false;
+      this.doc.body.classList.remove(this.altNavModeClass);
+      this.cursorTooltip.classList.remove("active");
+    }
+  }
+  
+  _updateCursorTooltip(x, y, useMousePosition = false) {
+    if (this.altNavigationMode) {
+      const activeUser = this.activeElement ? this._uniqueName(this.activeElement) : "Selection";
+      const contentEl = this.cursorTooltip.querySelector(".cursor-tooltip-content");
+      
+      if (contentEl.textContent !== activeUser) {
+        contentEl.textContent = activeUser || "Selection";
+      }
+      
+      this.cursorTooltip.style.willChange = "transform";
+      
+      if (useMousePosition) {
+        this.cursorTooltip.style.transform = "none";
+        this.cursorTooltip.style.left = `${this.mousePos.x}px`;
+        this.cursorTooltip.style.top = `${this.mousePos.y}px`;
+      } else {
+        this.cursorTooltip.style.left = `${x}px`;
+        this.cursorTooltip.style.top = `${y}px`;
+      }
+    }
+  }
+  
   _startUpdater() {
     if (this.updaterId) return;
     const e = () => {
       if (this.activeElement) {
         this._updateOverlayPosition();
+        
+        if (this.altNavigationMode) {
+          this._updateCursorTooltip(0, 0, true);
+        }
+        
         this.updaterId = requestAnimationFrame(e);
       }
     };
@@ -382,13 +553,15 @@ body.selection-mode .${this.highlightClass} * {
   _ensureHighlight() {
     const e = this._findCandidateUnderMouse(this.mousePos.x, this.mousePos.y);
     if (!e) return;
+    
     if (this.activeElement) {
       const [n, r] = this._computeGap(this.activeElement);
-      if (this._isInGap(this.mousePos.y, n, r)) {
-        if (e !== this.activeElement) {
-          this._highlightBlock(e);
+      
+      if (!this._isInGap(this.mousePos.y, n, r) || e !== this.activeElement) {
+        if (this.altNavigationMode) {
+          this._updateCursorTooltip(0, 0, true);
         }
-      } else {
+        
         this._highlightBlock(e);
       }
     } else {
@@ -396,24 +569,57 @@ body.selection-mode .${this.highlightClass} * {
     }
   }
   _handleIncrement(e = true) {
+    this._enterAltNavigationMode();
+    
     this._refreshCandidates();
+    
+    if (!this.activeElement && this.candidateElements.length > 0) {
+      const initialIndex = e ? 0 : this.candidateElements.length - 1;
+      this._highlightBlock(this.candidateElements[initialIndex]);
+      this._updateCursorTooltip(0, 0, true);
+      return;
+    }
+    
     if (!this.activeElement) return;
+    
     const n = this.candidateElements.indexOf(this.activeElement);
     if (n < 0) return;
+    
     let r = n;
     if (e && n < this.candidateElements.length - 1) {
       r = n + 1;
     } else if (!e && n > 0) {
       r = n - 1;
     }
+    
     if (r !== n) {
+      this._updateCursorTooltip(0, 0, true);
+      
       this._highlightBlock(this.candidateElements[r]);
+      
+      const rect = this.candidateElements[r].getBoundingClientRect();
+      const isInView = (
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+      );
+      
+      if (!isInView) {
+        this.candidateElements[r].scrollIntoView({ behavior: 'auto', block: 'nearest' });
+      }
+      
+      this._updateCursorTooltip(0, 0, true);
     }
   }
   _trySelectByTypedSequence() {
     if (!this.typedSequence) return;
     
+    this._enterAltNavigationMode();
+    
     const lowerSeq = this.typedSequence.toLowerCase();
+    
+    this._refreshCandidates();
     
     let matches = this.candidateElements.filter(el => {
       const userName = this._uniqueName(el);
@@ -428,6 +634,8 @@ body.selection-mode .${this.highlightClass} * {
     }
     
     if (matches && matches.length > 0) {
+      this._updateCursorTooltip(0, 0, true);
+      
       matches.sort((a, b) => {
         const rectA = a.getBoundingClientRect();
         const rectB = b.getBoundingClientRect();
@@ -435,6 +643,7 @@ body.selection-mode .${this.highlightClass} * {
       });
       
       const mostRecentMatch = matches[0];
+      
       this._highlightBlock(mostRecentMatch);
       
       const rect = mostRecentMatch.getBoundingClientRect();
@@ -448,6 +657,8 @@ body.selection-mode .${this.highlightClass} * {
       if (!isInView) {
         mostRecentMatch.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
+      
+      this._updateCursorTooltip(0, 0, true);
     }
   }
 }
