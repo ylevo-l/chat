@@ -64,7 +64,7 @@ export class UserSelector {
   _createOverlay() {
     const e = this.doc.createElement("div");
     e.className = "hover-tooltip-overlay";
-    e.innerHTML = `<div class="hover-tooltip">View Chat Log</div>`;
+    e.innerHTML = `<div class="hover-tooltip"><span class="username-color-dot"></span> View Chat Log</div>`;
     this.doc.body.appendChild(e);
     return e;
   }
@@ -75,25 +75,24 @@ export class UserSelector {
     e.style.willChange = "transform";
     e.style.pointerEvents = "none";
     e.innerHTML = `
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:-6px;left:-6px">
-        <path d="M5 5L19 19M5 19L19 5" stroke="white" stroke-width="3" stroke-linecap="round"/>
-      </svg>
-      <div class="cursor-tooltip-content">Selection</div>
+      <div class="cursor-tooltip-content"><span class="username-color-dot"></span> Selection</div>
     `;
     this.doc.body.appendChild(e);
     return e;
   }
   get _styleContent() {
     return `:root {
---highlight-border-color: #3b82f6;
---highlight-bg-color: rgba(59,130,246,0.12);
+--highlight-border-color: rgba(80, 80, 90, 0.8);
+--highlight-bg-color: rgba(59, 59, 70, 0.15);
 --highlight-border-radius: 8px;
---highlight-box-shadow: 0 4px 12px rgba(59,130,246,0.2);
---tooltip-bg-color: #3b82f6;
---tooltip-text-color: #fff;
---tooltip-padding: 2px 5px;
---tooltip-border-radius: 4px;
+--highlight-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+--tooltip-bg-color: rgba(37, 38, 40, 255);
+--tooltip-text-color: rgba(255, 255, 255, 0.95);
+--tooltip-padding: 6px 10px;
+--tooltip-border-radius: 6px;
 --tooltip-font-size: 0.7rem;
+--tooltip-border-color: rgba(70, 70, 80, 0.7);
+--tooltip-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 .hover-tooltip-overlay {
   position: absolute;
@@ -104,7 +103,7 @@ export class UserSelector {
   box-shadow: var(--highlight-box-shadow);
   z-index: 1000;
   opacity: 0;
-  transition: opacity 0.15s ease-out;
+  transition: opacity 0.2s ease-out, transform 0.15s ease-out;
   will-change: opacity, transform;
 }
 .hover-tooltip-overlay.active {
@@ -126,7 +125,7 @@ body.${this.altNavModeClass} * {
   position: absolute;
   bottom: 100%;
   left: 50%;
-  transform: translate(-50%, -6px);
+  transform: translate(-50%, -8px);
   background: var(--tooltip-bg-color);
   color: var(--tooltip-text-color);
   padding: var(--tooltip-padding);
@@ -137,16 +136,25 @@ body.${this.altNavModeClass} * {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   will-change: transform;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--tooltip-border-color);
+  box-shadow: var(--tooltip-shadow);
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  transition: transform 0.15s ease-out, opacity 0.15s ease-out;
 }
 .cursor-tooltip {
   position: fixed;
   pointer-events: none;
   z-index: 10000;
   opacity: 0;
-  transition: opacity 0.1s ease-out;
+  transition: opacity 0.15s ease-out, transform 0.1s ease-out;
   will-change: transform, opacity;
   backface-visibility: hidden;
-  transform: translate(10px, 10px);
+  transform: translate(0, 0);
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.2));
 }
 .cursor-tooltip.active {
   opacity: 1;
@@ -160,8 +168,25 @@ body.${this.altNavModeClass} * {
   white-space: nowrap;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  box-shadow: var(--tooltip-shadow);
   will-change: contents;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--tooltip-border-color);
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  backdrop-filter: blur(2px);
+}
+.username-color-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
 }`;
   }
   _injectStyles() {
@@ -239,9 +264,12 @@ body.${this.altNavModeClass} * {
       return;
     }
     
-    const n = { x: e.clientX, y: e.clientY + this.virtualOffset + this.scrollOffsetY };
-    this.lastMousePos = n;
     this.mousePos = { x: e.clientX, y: e.clientY };
+    
+    this.lastMousePos = { 
+      x: e.clientX, 
+      y: e.clientY + this.virtualOffset + this.scrollOffsetY 
+    };
     
     if (this.altNavigationMode) {
       requestAnimationFrame(() => {
@@ -345,38 +373,62 @@ body.${this.altNavModeClass} * {
     const n = e.querySelector("button.font-bold[title]");
     return n ? n.getAttribute("title") : null;
   }
+
+  _getUsernameColor(e) {
+    const nameButton = e.querySelector("button.font-bold[title]");
+    if (!nameButton) return "#ffffff";
+    
+    
+    if (nameButton.hasAttribute("data-color")) {
+      return nameButton.getAttribute("data-color");
+    }
+    
+    if (nameButton.style.color) {
+      return nameButton.style.color;
+    }
+    
+    const colorIndicator = nameButton.querySelector("[style*='color']") || 
+                          nameButton.querySelector(".user-color");
+    if (colorIndicator) {
+      const style = window.getComputedStyle(colorIndicator);
+      return style.color || style.backgroundColor;
+    }
+    
+    const style = window.getComputedStyle(nameButton);
+    return style.color || "#ffffff";
+  }
+  
   _findCandidateUnderMouse(x, y) {
-    const n = this.doc.elementFromPoint(x, y);
-    if (n) {
-      const r = n.closest(this.options.candidateSelector);
-      if (r && this.candidateElements.includes(r)) {
-        const [i, s] = this._computeGap(r);
-        if (this._isInGap(y, i, s)) {
-          return r;
-        }
+    const adjustedY = y + this.virtualOffset + this.scrollOffsetY;
+    
+    const elementAtPoint = this.doc.elementFromPoint(x, adjustedY);
+    if (elementAtPoint) {
+      const candidate = elementAtPoint.closest(this.options.candidateSelector);
+      if (candidate && this.candidateElements.includes(candidate)) {
+        return candidate;
       }
     }
-    const o = this.candidateElements.filter(e => {
-      const n = e.getBoundingClientRect();
-      return y >= n.top && y <= n.bottom;
+    
+    const candidatesInRange = this.candidateElements.filter(elem => {
+      const rect = elem.getBoundingClientRect();
+      return adjustedY >= rect.top && adjustedY <= rect.bottom;
     });
-    if (!o.length) return null;
-    for (const c of o) {
-      const [d, l] = this._computeGap(c);
-      if (this._isInGap(y, d, l)) {
-        return c;
-      }
-    }
-    return o[0];
+    
+    if (!candidatesInRange.length) return null;
+    
+    return candidatesInRange[0];
   }
-  _computeGap(e) {
-    const { top: n, height: r } = e.getBoundingClientRect();
-    const i = n + r / 2;
-    return [i - 7.5, i + 7.5];
+  
+  _isInViewport(element) {
+    const rect = element.getBoundingClientRect();
+    return (
+      rect.top >= 0 &&
+      rect.left >= 0 &&
+      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+      rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+    );
   }
-  _isInGap(e, n, r) {
-    return e >= n && e <= r;
-  }
+  
   _getBlockElements(e) {
     const n = this._uniqueName(e);
     if (!n) return [e];
@@ -434,7 +486,21 @@ body.${this.altNavModeClass} * {
     const r = e.querySelector("button.font-bold[title]");
     const i = r ? r.getAttribute("title") : "Chat";
     const s = this.overlay.querySelector(".hover-tooltip");
-    if (s) s.textContent = `${i} | Log`;
+    
+    if (s) {
+      const colorDot = s.querySelector(".username-color-dot");
+      if (colorDot) {
+        const userColor = this._getUsernameColor(e);
+        colorDot.style.backgroundColor = userColor;
+      }
+      
+      const textNode = s.childNodes[s.childNodes.length - 1];
+      if (textNode.nodeType === Node.TEXT_NODE) {
+        textNode.textContent = ` ${i} | Log`;
+      } else {
+        s.appendChild(document.createTextNode(` ${i} | Log`));
+      }
+    }
     
     this._updateOverlayPosition();
     
@@ -511,15 +577,25 @@ body.${this.altNavModeClass} * {
     if (this.altNavigationMode) {
       const activeUser = this.activeElement ? this._uniqueName(this.activeElement) : "Selection";
       const contentEl = this.cursorTooltip.querySelector(".cursor-tooltip-content");
+      const colorDot = contentEl.querySelector(".username-color-dot");
       
-      if (contentEl.textContent !== activeUser) {
-        contentEl.textContent = activeUser || "Selection";
+      if (this.activeElement) {
+        const userColor = this._getUsernameColor(this.activeElement);
+        if (colorDot) {
+          colorDot.style.backgroundColor = userColor;
+        }
+      } else if (colorDot) {
+        colorDot.style.backgroundColor = "#ffffff";
+      }
+      
+      const textNode = contentEl.childNodes[contentEl.childNodes.length - 1];
+      if (textNode.nodeType === Node.TEXT_NODE && textNode.textContent !== ` ${activeUser}`) {
+        textNode.textContent = ` ${activeUser}`;
       }
       
       this.cursorTooltip.style.willChange = "transform";
       
       if (useMousePosition) {
-        this.cursorTooltip.style.transform = "none";
         this.cursorTooltip.style.left = `${this.mousePos.x}px`;
         this.cursorTooltip.style.top = `${this.mousePos.y}px`;
       } else {
@@ -551,21 +627,17 @@ body.${this.altNavModeClass} * {
     }
   }
   _ensureHighlight() {
-    const e = this._findCandidateUnderMouse(this.mousePos.x, this.mousePos.y);
-    if (!e) return;
+    const candidate = this._findCandidateUnderMouse(this.mousePos.x, this.mousePos.y);
+    if (!candidate) return;
     
-    if (this.activeElement) {
-      const [n, r] = this._computeGap(this.activeElement);
-      
-      if (!this._isInGap(this.mousePos.y, n, r) || e !== this.activeElement) {
-        if (this.altNavigationMode) {
-          this._updateCursorTooltip(0, 0, true);
-        }
-        
-        this._highlightBlock(e);
+    if (this.activeElement && candidate !== this.activeElement) {
+      if (this.altNavigationMode) {
+        this._updateCursorTooltip(0, 0, true);
       }
-    } else {
-      this._highlightBlock(e);
+      
+      this._highlightBlock(candidate);
+    } else if (!this.activeElement) {
+      this._highlightBlock(candidate);
     }
   }
   _handleIncrement(e = true) {
@@ -598,14 +670,14 @@ body.${this.altNavModeClass} * {
       this._highlightBlock(this.candidateElements[r]);
       
       const rect = this.candidateElements[r].getBoundingClientRect();
-      const isInView = (
-        rect.top >= 0 &&
-        rect.left >= 0 &&
-        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
-      );
+      const midpoint = rect.top + rect.height / 2;
+      this.virtualOffset = midpoint - this.mousePos.y;
+      this.lastMousePos = { 
+        x: this.mousePos.x, 
+        y: this.mousePos.y + this.virtualOffset + this.scrollOffsetY 
+      };
       
-      if (!isInView) {
+      if (!this._isInViewport(this.candidateElements[r])) {
         this.candidateElements[r].scrollIntoView({ behavior: 'auto', block: 'nearest' });
       }
       
@@ -636,26 +708,55 @@ body.${this.altNavModeClass} * {
     if (matches && matches.length > 0) {
       this._updateCursorTooltip(0, 0, true);
       
+      if (this.activeElement) {
+        const currentName = this._uniqueName(this.activeElement);
+        const currentIndex = this.candidateElements.indexOf(this.activeElement);
+        
+        const nextMatch = matches.find(el => {
+          const index = this.candidateElements.indexOf(el);
+          const name = this._uniqueName(el);
+          return name !== currentName && index > currentIndex;
+        });
+        
+        if (nextMatch) {
+          this._highlightBlock(nextMatch);
+          const rect = nextMatch.getBoundingClientRect();
+          const midpoint = rect.top + rect.height / 2;
+          this.virtualOffset = midpoint - this.mousePos.y;
+          this.lastMousePos = { 
+            x: this.mousePos.x, 
+            y: this.mousePos.y + this.virtualOffset + this.scrollOffsetY 
+          };
+          
+          if (!this._isInViewport(nextMatch)) {
+            nextMatch.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+          
+          this._updateCursorTooltip(0, 0, true);
+          return;
+        }
+      }
+      
       matches.sort((a, b) => {
         const rectA = a.getBoundingClientRect();
         const rectB = b.getBoundingClientRect();
-        return rectB.top - rectA.top;
+        return rectA.top - rectB.top;
       });
       
-      const mostRecentMatch = matches[0];
+      const topMatch = matches[0];
       
-      this._highlightBlock(mostRecentMatch);
+      this._highlightBlock(topMatch);
       
-      const rect = mostRecentMatch.getBoundingClientRect();
-      const isInView = (
-        rect.top >= 0 &&
-        rect.left >= 0 &&
-        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
-      );
+      const rect = topMatch.getBoundingClientRect();
+      const midpoint = rect.top + rect.height / 2;
+      this.virtualOffset = midpoint - this.mousePos.y;
+      this.lastMousePos = { 
+        x: this.mousePos.x, 
+        y: this.mousePos.y + this.virtualOffset + this.scrollOffsetY 
+      };
       
-      if (!isInView) {
-        mostRecentMatch.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (!this._isInViewport(topMatch)) {
+        topMatch.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
       
       this._updateCursorTooltip(0, 0, true);
