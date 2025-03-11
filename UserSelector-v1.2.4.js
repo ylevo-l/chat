@@ -304,13 +304,11 @@ export class UserSelector {
     if (!this.state.activeElem) return;
     const curIndex = this.ui.candidates.indexOf(this.state.activeElem);
     if (curIndex < 0) return;
-    let nextIndex = curIndex;
-    nextIndex = down && curIndex < this.ui.candidates.length - 1 ? curIndex + 1 : !down && curIndex > 0 ? curIndex - 1 : curIndex;
+    const nextIndex = down && curIndex < this.ui.candidates.length - 1 ? curIndex + 1 : !down && curIndex > 0 ? curIndex - 1 : curIndex;
     if (nextIndex !== curIndex) {
       const nextElem = this.ui.candidates[nextIndex];
       this._highlightBlock(nextElem);
       this._updateVirtualPos(this.state.mouse.pos.x, this.state.mouse.pos.y);
-      if (!this._isInViewport(nextElem)) nextElem.scrollIntoView({ behavior: "auto", block: "nearest" });
       this._updateCursorTooltip();
     }
   }
@@ -349,7 +347,6 @@ export class UserSelector {
       if (nextMatch) {
         this._highlightBlock(nextMatch);
         this._updateVirtualPos(this.state.mouse.pos.x, this.state.mouse.pos.y);
-        if (!this._isInViewport(nextMatch)) nextMatch.scrollIntoView({ behavior: "smooth", block: "nearest" });
         this._updateCursorTooltip();
         return;
       }
@@ -358,7 +355,6 @@ export class UserSelector {
     const topMatch = sorted[0];
     this._highlightBlock(topMatch);
     this._updateVirtualPos(this.state.mouse.pos.x, this.state.mouse.pos.y);
-    if (!this._isInViewport(topMatch)) topMatch.scrollIntoView({ behavior: "smooth", block: "nearest" });
     this._updateCursorTooltip();
   }
   _updateVirtualPos(x, y) {
