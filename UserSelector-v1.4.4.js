@@ -133,7 +133,7 @@ export class UserSelector {
 
   _injectStyles() {
     const style = this.doc.createElement("style");
-    style.textContent = `:root{--highlight-border-color:rgba(80,80,90,.9);--highlight-border-width:2px;--highlight-bg-color:transparent;--highlight-border-radius:8px;--highlight-box-shadow:0 4px 12px rgba(0,0,0,.25);--tooltip-bg-color:rgba(37,38,40,255);--tooltip-text-color:rgba(255,255,255,.95);--tooltip-padding:6px 10px;--tooltip-border-radius:6px;--tooltip-font-size:.7rem;--tooltip-border-color:rgba(70,70,80,.7);--tooltip-shadow:0 2px 10px rgba(0,0,0,.35)}.hover-tooltip-overlay{position:absolute;pointer-events:none;border:var(--highlight-border-width) solid var(--highlight-border-color);background:var(--highlight-bg-color);border-radius:var(--highlight-border-radius);box-shadow:var(--highlight-box-shadow);z-index:1000;opacity:0;transition:opacity .2s ease-out,transform .15s ease-out;will-change:opacity,transform}.hover-tooltip-overlay.active{opacity:1}.${this.highlightClass}{cursor:pointer!important}.${this.noSelectClass}{user-select:none}body.selection-mode .${this.highlightClass} *{pointer-events:none!important}body.${this.altNavModeClass} *{cursor:none!important}.hover-tooltip{position:absolute;bottom:100%;left:50%;transform:translate(-50%,-8px);background:var(--tooltip-bg-color);color:var(--tooltip-text-color);padding:var(--tooltip-padding);border-radius:var(--tooltip-border-radius);font-size:var(--tooltip-font-size);white-space:nowrap;pointer-events:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;will-change:transform;display:flex;align-items:center;gap:6px;border:1px solid var(--tooltip-border-color);box-shadow:var(--tooltip-shadow);font-weight:500;letter-spacing:.2px;transition:transform .15s ease-out,opacity .15s ease-out}.cursor-tooltip{position:fixed;pointer-events:none;z-index:10000;opacity:0;transition:opacity .15s ease-out;will-change:transform,opacity;backface-visibility:hidden;transform:translate(-50%,-50%);filter:drop-shadow(0 1px 3px rgba(0,0,0,.2))}.cursor-tooltip.active{opacity:1}.cursor-tooltip-content{background:var(--tooltip-bg-color);color:var(--tooltip-text-color);padding:var(--tooltip-padding);border-radius:var(--tooltip-border-radius);font-size:var(--tooltip-font-size);white-space:nowrap;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;box-shadow:0 3px 14px rgba(0,0,0,.35);will-change:contents;display:flex;align-items:center;gap:6px;border:1px solid var(--tooltip-border-color);font-weight:500;letter-spacing:.2px;backdrop-filter:blur(2px)}.username-color-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background-color:#fff;border:1px solid rgba(255,255,255,.3);box-shadow:0 0 3px rgba(0,0,0,.2);flex-shrink:0}.username-text{font-weight:600;}`;
+    style.textContent = `:root{--highlight-border-color:rgba(80,80,90,.9);--highlight-border-width:2px;--highlight-bg-color:transparent;--highlight-border-radius:8px;--highlight-box-shadow:0 4px 12px rgba(0,0,0,.25);--tooltip-bg-color:rgba(37,38,40,255);--tooltip-text-color:rgba(255,255,255,.95);--tooltip-padding:6px 10px;--tooltip-border-radius:6px;--tooltip-font-size:.7rem;--tooltip-border-color:rgba(70,70,80,.7);--tooltip-shadow:0 2px 10px rgba(0,0,0,.35)}.hover-tooltip-overlay{position:absolute;pointer-events:none;border:var(--highlight-border-width) solid var(--highlight-border-color);background:var(--highlight-bg-color);border-radius:var(--highlight-border-radius);box-shadow:var(--highlight-box-shadow);z-index:1000;opacity:0;transition:opacity .2s ease-out,transform .15s ease-out;will-change:opacity,transform}.hover-tooltip-overlay.active{opacity:1}.${this.highlightClass}{cursor:pointer!important}.${this.noSelectClass}{user-select:none}body.selection-mode .${this.highlightClass} *{pointer-events:none!important}body.${this.altNavModeClass} *{cursor:none!important}.hover-tooltip{position:absolute;bottom:100%;left:50%;transform:translate(-50%,-8px);background:var(--tooltip-bg-color);color:var(--tooltip-text-color);padding:var(--tooltip-padding);border-radius:var(--tooltip-border-radius);font-size:var(--tooltip-font-size);white-space:nowrap;pointer-events:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;will-change:transform;display:flex;align-items:center;gap:6px;border:1px solid var(--tooltip-border-color);box-shadow:var(--tooltip-shadow);font-weight:500;letter-spacing:.2px;transition:transform .15s ease-out,opacity .15s ease-out}.hover-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);width:10px;height:8px;background-color:var(--tooltip-bg-color);clip-path:polygon(0 0, 100% 0, 50% 100%);border-left:1px solid var(--tooltip-border-color);border-right:1px solid var(--tooltip-border-color);border-bottom:none;z-index:1}.cursor-tooltip{position:fixed;pointer-events:none;z-index:10000;opacity:0;transition:opacity .15s ease-out;will-change:transform,opacity;backface-visibility:hidden;transform:translate(-50%,-50%);filter:drop-shadow(0 1px 3px rgba(0,0,0,.2))}.cursor-tooltip.active{opacity:1}.cursor-tooltip-content{background:var(--tooltip-bg-color);color:var(--tooltip-text-color);padding:var(--tooltip-padding);border-radius:var(--tooltip-border-radius);font-size:var(--tooltip-font-size);white-space:nowrap;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;box-shadow:0 3px 14px rgba(0,0,0,.35);will-change:contents;display:flex;align-items:center;gap:6px;border:1px solid var(--tooltip-border-color);font-weight:500;letter-spacing:.2px;backdrop-filter:blur(2px)}.username-color-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background-color:#fff;border:1px solid rgba(255,255,255,.3);box-shadow:0 0 3px rgba(0,0,0,.2);flex-shrink:0}.username-text{font-weight:600;}`;
     this.doc.head.appendChild(style);
   }
 
@@ -246,6 +246,12 @@ export class UserSelector {
   }
 
   _handleClick(e) {
+    // Only process click actions when in selection mode (Shift is active)
+    // or there's already an active element
+    if (!this.shiftActive && !this.activeElement) {
+      return;
+    }
+    
     if (this.activeElement) {
       const element = this.activeElement;
       this._resetHighlight();
@@ -255,18 +261,21 @@ export class UserSelector {
       return;
     }
     
-    const elementAtPoint = this.doc.elementFromPoint(e.clientX, e.clientY);
-    if (elementAtPoint) {
-      const candidate = elementAtPoint.closest(this.options.candidateSelector);
-      if (candidate && this._uniqueName(candidate)) {
-        if (!this.candidateElements.includes(candidate)) {
-          this._refreshCandidates(true);
+    // Only continue if we're in selection mode
+    if (this.shiftActive) {
+      const elementAtPoint = this.doc.elementFromPoint(e.clientX, e.clientY);
+      if (elementAtPoint) {
+        const candidate = elementAtPoint.closest(this.options.candidateSelector);
+        if (candidate && this._uniqueName(candidate)) {
+          if (!this.candidateElements.includes(candidate)) {
+            this._refreshCandidates(true);
+          }
+          
+          this._highlightBlock(candidate);
+          this._triggerAction(candidate);
+          e.preventDefault();
+          e.stopPropagation();
         }
-        
-        this._highlightBlock(candidate);
-        this._triggerAction(candidate);
-        e.preventDefault();
-        e.stopPropagation();
       }
     }
   }
